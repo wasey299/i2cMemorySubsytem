@@ -7,6 +7,5 @@ output dout,
 inout tri sda, scl,
 output busy, ackErr, done
 );
-
-
+ //Hi 
 endmodule
