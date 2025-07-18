@@ -1,0 +1,17 @@
+# Log files
+*.log
+
+# Waveform files
+*.vcd
+*.fsdb
+*.vpd
+
+# Compiled simulation files (VCS)
+simv*
+csrc
+*.daidir
+
+# Vivado/other tool files
+*.jou
+*.wdb
+.Xil/
