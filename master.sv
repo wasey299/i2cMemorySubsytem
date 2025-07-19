@@ -41,8 +41,8 @@ module master
     //================================================================
 
     // --- Timing Generator Signals ---
-    logic [$clog2(clockQuart) - 1:0]    countQuart; // Counte from 0 to clockQuart - 1
-    logic [1:0]                         countPulse; // Counts four phases: 0, 1, 2, 3
+    int             countFull;  // Counte from 0 to clockQuart - 1
+    logic [1:0]     countPulse; // Counts four phases: 0, 1, 2, 3
 
     // --- FSM States Enum Logic ---
     typedef enum logic [3:0] {
@@ -74,19 +74,22 @@ module master
     //================================================================
     // Timing Generator
     //================================================================
-    always_ff @(posedge clk or negedge rst) begin
-        if (!rst) begin
-            countQuart <= '0;
+    always_ff @(posedge clk) begin
+        if (rst && !busy) begin
+            countFull <= '0;
             countPulse <= '0;
         end
 
         else begin
-            if (countQuart  == clockQuart - 1) begin
-                countQuart <= '0;    // Explcitly resetting. Reason: As per the width, there will be 128 possible vaues, whereas this hsould have 125 max.
-                countPulse <= countPulse + 1;       // Pulse generation : 0, 1, 2, 3      
-            end else begin
-                countQuart <= countQuart + 1;
-            end
+            if ((countFull  == clockQuart - 1) || (countFull  == clockQuart*2 - 1 )|| (countFull  == clockQuart*3 - 1))  begin
+                countFull <= countFull + 1;                   
+                countPulse <= countPulse + 1;            
+            end 
+            else if (countFull  == clockFull - 1) begin
+                countFull <= '0;                  
+                countPulse <= 0;             
+            end 
+            else countFull <= countFull + 1;
         end
     end
      
@@ -142,7 +145,7 @@ module master
                                         end
                         endcase
 
-                        if (countQuart == clockFull - 1) begin
+                        if (countFull == clockFull - 1) begin
                             next_state = WRITE;
                             scl_tmp = 1'b0;
                         end else next_state = SEND_ADDR;
