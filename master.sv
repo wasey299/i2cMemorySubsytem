@@ -33,7 +33,7 @@ module master
     parameter clockFull = freqSystem / freqI2C; //500
 
     // Calculate the number of clocks for one quarter of an I2C clock period
-    parameter clockQuart = clockFull/4; //100
+    parameter clockQuart = clockFull/4; //125
 
 
     //================================================================
@@ -41,6 +41,7 @@ module master
     //================================================================
 
     // --- Timing Generator Signals ---
+    logic [$clog2(clockFull) - 1:0]     countFull;
     logic [$clog2(clockQuart) - 1:0]    countQuart; // Counte from 0 to clockQuart - 1
     logic [1:0]                         countPulse; // Counts four phases: 0, 1, 2, 3
 
@@ -57,6 +58,19 @@ module master
         MASTER_ACK
     } state_t;
     state_t state, next_state;
+
+    // --- Internal Registers ---
+    logic [7:0] addr_reg;   //Register to store {addr, rw}
+    logic [7:0] data_reg;   //Register to store din  
+    logic       sda_tmp;    //Temporary holding regs for sda and scl
+    logic       scl_tmp;
+    
+    // --- Tri-State Buffers for connection to sda and scl lines ---
+    logic sda_en;
+    logic scl_en;
+
+    assign sda = (sda_en == 1'b1) ? (sda_tmp == 1'b0) ? 1'b0 : 1'b1 : 1'bz;
+    assign scl = scl_tmp;
 
     //================================================================
     // Timing Generator
@@ -82,10 +96,69 @@ module master
     //================================================================
     always_ff @(posedge clk or negedge rst) begin
     if (!rst) begin
-        busy    <= 1'b0;
-        ackErr <= 1'b0;
-        done    <= 1'b0;       
+        busy        <= 1'b0;
+        ackErr      <= 1'b0;
+        done        <= 1'b0;
+        addr_reg    <= '0;       
+        data_reg    <= '0;
+        scl_tmp     <= 1'b0;
+        sda_tmp     <= 1'b0;
+        state       <= IDLE;
     end else state <= next_state; 
+    end
+
+    always_comb begin
+        unique case (state)
+                    IDLE: begin
+                        done = 1'b0;
+                        ackErr = 1'b0;
+                        if (dataValid) begin
+                           addr_reg     = {addr, rw};
+                           data_reg     = din; 
+                           busy         = 1'b1;
+                           next_state   = START;                           
+                       end else begin
+                           busy         = 1'b0;
+                           next_state   = IDLE;
+                       end
+                    end
+
+                    START: begin
+                        sda_en = 1'b1;
+                        // The start condition:
+                        unique case (countPulse)
+                                        2'b00: begin
+                                             sda_tmp = 1'b1;
+                                             scl_tmp = 1'b1;
+                                        end
+
+                                        2'b01: begin
+                                             sda_tmp = 1'b1;
+                                             scl_tmp = 1'b1;
+                                        end
+
+                                        2'b10: begin
+                                             sda_tmp = 1'b0;
+                                             scl_tmp = 1'b1;
+                                        end
+
+                                        2'b11: begin
+                                             sda_tmp = 1'b0;
+                                             scl_tmp = 1'b1;
+                                        end
+                        endcase
+
+                        if (countQuart == countFull) begin
+                            next_state = WRITE;
+                            scl_tmp = 1'b0;
+                        end else next_state = START;
+                    end
+
+                    WRITE: begin
+                        $dipslay("HURRAY");
+                        next_state = WRITE;
+                    end
+                endcase
     end
 endmodule
 
