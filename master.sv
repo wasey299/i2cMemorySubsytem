@@ -74,8 +74,8 @@ module master
     //================================================================
     // Timing Generator
     //================================================================
-    always_ff @(posedge clk) begin
-        if (rst && !busy) begin
+    always_ff @(posedge clk or negedge rst) begin
+        if (!rst) begin
             countFull <= '0;
             countPulse <= '0;
         end
@@ -87,7 +87,7 @@ module master
             end 
             else if (countFull  == clockFull - 1) begin
                 countFull <= '0;                  
-                countPulse <= 0;             
+                countPulse <= '0;             
             end 
             else countFull <= countFull + 1;
         end
@@ -146,9 +146,9 @@ module master
                         endcase
 
                         if (countFull == clockFull - 1) begin
-                            next_state = WRITE;
+                            next_state = SEND_ADDR;
                             scl_tmp = 1'b0;
-                        end else next_state = SEND_ADDR;
+                        end 
                     end
 
                     SEND_ADDR: begin
