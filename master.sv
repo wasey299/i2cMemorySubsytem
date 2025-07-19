@@ -94,24 +94,17 @@ module master
     //================================================================
     // Main Finite State Machines
     //================================================================
-    always_ff @(posedge clk or negedge rst) begin
-    if (!rst) begin
-        busy        <= 1'b0;
-        ackErr      <= 1'b0;
-        done        <= 1'b0;
-        addr_reg    <= '0;       
-        data_reg    <= '0;
-        scl_tmp     <= 1'b0;
-        sda_tmp     <= 1'b0;
-        state       <= IDLE;
-    end else state <= next_state; 
-    end
+    always_ff @(posedge clk or negedge rst)
+    if (!rst) state <= IDLE;
+    else state <= next_state; 
 
     always_comb begin
         unique case (state)
                     IDLE: begin
                         done = 1'b0;
                         ackErr = 1'b0;
+                        scl_tmp     <= 1'b0;
+                        sda_tmp     <= 1'b0;
                         if (dataValid) begin
                            addr_reg     = {addr, rw};
                            data_reg     = din; 
@@ -120,6 +113,8 @@ module master
                        end else begin
                            busy         = 1'b0;
                            next_state   = IDLE;
+                           addr_reg     = '0;
+                           data_reg     = '0;
                        end
                     end
 

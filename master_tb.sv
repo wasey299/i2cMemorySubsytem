@@ -1,6 +1,8 @@
 `timescale 1ns / 1ps //Precision of 0.001 ns
 
-module timing_generator_logic_tb; 
+`include "master.sv"
+
+module master_tb; 
     //================================================================
     // Testbench Signals
     //================================================================
@@ -52,6 +54,10 @@ module timing_generator_logic_tb;
         repeat (500) @ (negedge clk);
         
         rst = 1'b1;
+        dataValid = 1'b1;
+        rw = 1'b0;
+        addr = 8'b01010101;
+        din = 7'b0001111;
         
         repeat (2500) @ (negedge clk); // Equivalent to 5 full i2c clock cycles.
 
