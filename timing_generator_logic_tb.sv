@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps //Precision of 0.001 ns
 
-module timing_genrator_logic_tb; 
+module timing_generator_logic_tb; 
     //================================================================
     // Testbench Signals
     //================================================================
