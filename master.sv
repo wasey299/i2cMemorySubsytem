@@ -41,7 +41,6 @@ module master
     //================================================================
 
     // --- Timing Generator Signals ---
-    logic [$clog2(clockFull) - 1:0]     countFull;
     logic [$clog2(clockQuart) - 1:0]    countQuart; // Counte from 0 to clockQuart - 1
     logic [1:0]                         countPulse; // Counts four phases: 0, 1, 2, 3
 
@@ -143,15 +142,15 @@ module master
                                         end
                         endcase
 
-                        if (countQuart == countFull) begin
+                        if (countQuart == clockFull - 1) begin
                             next_state = WRITE;
                             scl_tmp = 1'b0;
-                        end else next_state = START;
+                        end else next_state = SEND_ADDR;
                     end
 
-                    WRITE: begin
+                    SEND_ADDR: begin
                         $dipslay("HURRAY");
-                        next_state = WRITE;
+                        next_state = SEND_ADDR;
                     end
                 endcase
     end
