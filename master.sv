@@ -23,11 +23,6 @@ module master
     inout tri           scl
 );
 
-    //Temporary logic for sda and scl
-    logic sclTemp = 1'b0;  
-    logic sdaTemp = 1'b0;
-
-
     //================================================================
     // Parameters
     //================================================================
@@ -49,6 +44,20 @@ module master
     logic [$clog2(clockQuart) - 1:0]    countQuart; // Counte from 0 to clockQuart - 1
     logic [1:0]                         countPulse; // Counts four phases: 0, 1, 2, 3
 
+    // --- FSM States Enum Logic ---
+    typedef enum logic [3:0] {
+        IDLE,
+        START,
+        SEND_ADDR,
+        SLAVE_ACK_1,
+        WRITE,
+        READ,
+        STOP,
+        SLAVE_ACK_2,
+        MASTER_ACK
+    } state_t;
+    state_t state, next_state;
+
     //================================================================
     // Timing Generator
     //================================================================
@@ -68,4 +77,41 @@ module master
         end
     end
      
+    //================================================================
+    // Main Finite State Machines
+    //================================================================
+    always_ff @(posedge clk or negedge rst) begin
+    if (!rst) begin
+        busy    <= 1'b0;
+        ackErr <= 1'b0;
+        done    <= 1'b0;       
+    end else state <= next_state; 
+    end
 endmodule
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
