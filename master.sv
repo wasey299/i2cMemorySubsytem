@@ -208,11 +208,88 @@ module master
                             if (countFull == clockFull - 1)  next_state = (!ackSlave) ? (addr_reg[0]) ? READ : WRITE : STOP; 
                      end
 
-                    READ: next_state = READ;
+                     WRITE: begin
+                        if (countBit <= 7) begin
+                            unique case (countPulse)
+                                        2'b00: begin
+                                                sda_tmp = 1'b0;
+                                                scl_tmp = 1'b0;
+                                        end
 
-                    WRITE: next_state = WRITE;
+                                        2'b01: begin
+                                                sda_tmp = data_reg[7 - countBit]; // Helps in transferring from MSB to LSB
+                                                scl_tmp = 1'b0;
+                                        end
 
-                    STOP: next_state = STOP;
+                                        2'b10:  scl_tmp = 1'b1;
+
+                                        2'b11:  scl_tmp = 1'b1;
+
+                            endcase
+                            if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
+                        
+                        end else begin
+                             next_state = SLAVE_ACK_DATA;
+                             countBit   = 1'b0;
+                             sda_en     = 1'b0;     // Passing control of sda line to the slave to receive ack bit
+                         end
+                    end
+
+                    SLAVE_ACK_DATA: begin
+                            unique case (countPulse)
+                                        2'b00: begin
+                                                sda_tmp = 1'b0;
+                                                scl_tmp = 1'b0;
+                                        end
+
+                                        2'b01: begin
+                                                sda_tmp = 1'b0;
+                                                scl_tmp = 1'b0;
+                                        end
+
+                                        2'b10: begin
+                                            scl_tmp     = 1'b1;
+                                            ackSlave    = 1'b0;  // Will be assigned to sda after slave is implemented
+                                        end
+
+                                        2'b11:  scl_tmp = 1'b1;
+                            endcase
+
+                            if (countFull == clockFull - 1)  begin
+                                next_state = STOP;
+                                ackErr = (!ackSlave) ? 1'b0 : 1'b1;
+                            end 
+                    end
+
+                    STOP: begin
+                        sda_en = 1'b1;
+                        // ---The stop condition:---
+                        unique case (countPulse)
+                                        2'b00: begin
+                                             sda_tmp = 1'b0;
+                                             scl_tmp = 1'b1;
+                                        end
+
+                                        2'b01: begin
+                                             sda_tmp = 1'b0;
+                                             scl_tmp = 1'b1;
+                                        end
+
+                                        2'b10: begin
+                                             sda_tmp = 1'b1;
+                                             scl_tmp = 1'b1;
+                                        end
+
+                                        2'b11: begin
+                                             sda_tmp = 1'b1;
+                                             scl_tmp = 1'b1;
+                                        end
+                        endcase
+
+                        if (countFull == clockFull - 1) begin
+                            next_state = IDLE;
+                        end 
+                    end
            endcase
     end
 
