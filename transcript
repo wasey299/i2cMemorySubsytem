@@ -13,64 +13,38 @@
 # // and may not be used in any way not expressly authorized by SISW.
 # //
 # vsim work.master_tb 
-# Start time: 17:52:09 on Jul 20,2025
+# Start time: 22:31:31 on Jul 20,2025
 # ** Note: (vsim-3813) Design is being optimized due to module recompilation...
 # Loading sv_std.std
 # Loading work.master_tb(fast)
-vsim master_tb
-# End time: 17:55:24 on Jul 20,2025, Elapsed time: 0:03:15
+vsim voptargs="+acc" work.master_tb
+# End time: 22:33:27 on Jul 20,2025, Elapsed time: 0:01:56
 # Errors: 0, Warnings: 0
-# vsim master_tb 
-# Start time: 17:55:24 on Jul 20,2025
-# ** Note: (vsim-8009) Loading existing optimized design _opt
-# Loading sv_std.std
-# Loading work.master_tb(fast)
-vsim -voptargs=+acc work.master_tb
-# End time: 17:56:15 on Jul 20,2025, Elapsed time: 0:00:51
-# Errors: 0, Warnings: 0
-# vsim -voptargs="+acc" work.master_tb 
-# Start time: 17:56:15 on Jul 20,2025
+# vsim voptargs="+acc" work.master_tb 
+# Start time: 22:33:27 on Jul 20,2025
 # ** Note: (vsim-3812) Design is being optimized...
+# ** Error: (vopt-11) Could not find work.voptargs="+acc".
+# Optimization failed
+# ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=1, Warnings=0.
+# Error loading design
+# End time: 22:33:29 on Jul 20,2025, Elapsed time: 0:00:02
+# Errors: 1, Warnings: 0
+vsim -voptargs="+acc" work.master_tb
+# vsim -voptargs=""+acc"" work.master_tb 
+# Start time: 22:34:03 on Jul 20,2025
+# ** Note: (vsim-3813) Design is being optimized due to module recompilation...
 # ** Warning: (vopt-10587) Some optimizations are turned off because the +acc switch is in effect. This will cause your simulation to run slowly. Please use -access/-debug to maintain needed visibility. The +acc switch would be deprecated in a future release.
 # ** Note: (vopt-143) Recognized 1 FSM in module "master(fast)".
 # ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=1.
 # Loading sv_std.std
 # Loading work.master_tb(fast)
 # Loading work.master(fast)
-add wave -position insertpoint  \
-sim:/master_tb/dut/freqSystem \
-sim:/master_tb/dut/freqI2C \
-sim:/master_tb/dut/clockFull \
-sim:/master_tb/dut/clockQuart \
-sim:/master_tb/dut/rst \
-sim:/master_tb/dut/clk \
-sim:/master_tb/dut/rw \
-sim:/master_tb/dut/dataValid \
-sim:/master_tb/dut/addr \
-sim:/master_tb/dut/din \
-sim:/master_tb/dut/dout \
-sim:/master_tb/dut/busy \
-sim:/master_tb/dut/ackErr \
-sim:/master_tb/dut/done \
-sim:/master_tb/dut/sda \
-sim:/master_tb/dut/scl \
-sim:/master_tb/dut/countFull \
-sim:/master_tb/dut/countPulse \
-sim:/master_tb/dut/countBit \
-sim:/master_tb/dut/state \
-sim:/master_tb/dut/next_state \
-sim:/master_tb/dut/addr_reg \
-sim:/master_tb/dut/data_reg \
-sim:/master_tb/dut/sda_tmp \
-sim:/master_tb/dut/scl_tmp \
-sim:/master_tb/dut/sda_en \
-sim:/master_tb/dut/scl_en
+add wave -position insertpoint\
+sim:/master_tb/dut/*
 run -all
 # ** Note: $finish    : master_tb.sv(65)
 #    Time: 160 us  Iteration: 1  Instance: /master_tb
 # 1
 # Break in Module master_tb at master_tb.sv line 65
-quit -sim
-# End time: 18:10:27 on Jul 20,2025, Elapsed time: 0:14:12
+# End time: 22:38:48 on Jul 20,2025, Elapsed time: 0:04:45
 # Errors: 0, Warnings: 1
-exit

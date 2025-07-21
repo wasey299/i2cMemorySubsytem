@@ -56,7 +56,7 @@ module master_tb;
         
         rst = 1'b1;
         dataValid = 1'b1;
-        rw = 1'b0;
+        rw = 1'b1;
         addr = 7'b1010101;
         din = 8'b00101111;
         

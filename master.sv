@@ -71,8 +71,11 @@ module master
     logic sda_en;
     logic scl_en;
 
-    assign sda = (sda_en == 1'b1) ? (sda_tmp == 1'b0) ? 1'b0 : 1'b1 : 1'bz;
+    assign sda = (sda_en) ? (!sda_tmp) ? 1'b0 : 1'b1 : 1'bz;
     assign scl = scl_tmp;
+
+    // --- Acknowledgement registers ---
+    logic ackSlave;
 
     //================================================================
     // Timing Generator
@@ -183,8 +186,33 @@ module master
                      end
                     
                      SLAVE_ACK_ADDR: begin
-                         next_state = SLAVE_ACK_ADDR;
+                            unique case (countPulse)
+                                        2'b00: begin
+                                                sda_tmp = 1'b0;
+                                                scl_tmp = 1'b0;
+                                        end
+
+                                        2'b01: begin
+                                                sda_tmp = 1'b0;
+                                                scl_tmp = 1'b0;
+                                        end
+
+                                        2'b10: begin
+                                            scl_tmp     = 1'b1;
+                                            ackSlave    = 1'b0;  // Will be assigned to sda after slave is implemented
+                                        end
+
+                                        2'b11:  scl_tmp = 1'b1;
+                            endcase
+
+                            if (countFull == clockFull - 1)  next_state = (!ackSlave) ? (addr_reg[0]) ? READ : WRITE : STOP; 
                      end
+
+                    READ: next_state = READ;
+
+                    WRITE: next_state = WRITE;
+
+                    STOP: next_state = STOP;
            endcase
     end
 
