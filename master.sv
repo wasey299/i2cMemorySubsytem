@@ -43,17 +43,20 @@ module master
     // --- Timing Generator Signals ---
     int             countFull;  // Counte from 0 to clockQuart - 1
     logic [1:0]     countPulse; // Counts four phases: 0, 1, 2, 3
+    
+    // --- Counters ---
+    logic [3:0]     countBit;   // Helps is transferring the data on SDA bit by bit from MSB to LSB
 
     // --- FSM States Enum Logic ---
     typedef enum logic [3:0] {
         IDLE,
         START,
         SEND_ADDR,
-        SLAVE_ACK_1,
+        SLAVE_ACK_ADDR,
         WRITE,
         READ,
         STOP,
-        SLAVE_ACK_2,
+        SLAVE_ACK_DATA,
         MASTER_ACK
     } state_t;
     state_t state, next_state;
@@ -103,10 +106,11 @@ module master
     always_comb begin
         unique case (state)
                     IDLE: begin
-                        done = 1'b0;
-                        ackErr = 1'b0;
-                        scl_tmp     <= 1'b0;
-                        sda_tmp     <= 1'b0;
+                        done        = 1'b0;
+                        ackErr      = 1'b0;
+                        scl_tmp     = 1'b0;
+                        sda_tmp     = 1'b0;
+                        countBit    = 1'b0;
                         if (dataValid) begin
                            addr_reg     = {addr, rw};
                            data_reg     = din; 
@@ -119,10 +123,10 @@ module master
                            data_reg     = '0;
                        end
                     end
-
+                    
                     START: begin
                         sda_en = 1'b1;
-                        // The start condition:
+                        // ---The start condition:---
                         unique case (countPulse)
                                         2'b00: begin
                                              sda_tmp = 1'b1;
@@ -152,11 +156,38 @@ module master
                     end
 
                     SEND_ADDR: begin
-                        $dipslay("HURRAY");
-                        next_state = SEND_ADDR;
-                    end
-                endcase
+                        if (countBit <= 7) begin
+                            unique case (countPulse)
+                                        2'b00: begin
+                                                sda_tmp = 1'b0;
+                                                scl_tmp = 1'b0;
+                                        end
+
+                                        2'b01: begin
+                                                sda_tmp = addr_reg[7 - countBit]; // Helps in transferring from MSB to LSB
+                                                scl_tmp = 1'b0;
+                                        end
+
+                                        2'b10:  scl_tmp = 1'b1;
+
+                                        2'b11:  scl_tmp = 1'b1;
+                            endcase
+
+                            if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
+                        
+                        end else begin
+                             next_state = SLAVE_ACK_ADDR;
+                             countBit   = 1'b0;
+                             sda_en     = 1'b0;     // Passing control of sda line to the slave to receive ack bit
+                         end
+                     end
+                    
+                     SLAVE_ACK_ADDR: begin
+                         next_state = SLAVE_ACK_ADDR;
+                     end
+           endcase
     end
+
 endmodule
 
 

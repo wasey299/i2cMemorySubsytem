@@ -37,7 +37,8 @@ module master_tb;
     //================================================================
     // Testbench Parameters
     //================================================================
-    localparam CLOCK_PERIOD = 20;
+    localparam CLOCK_PERIOD     = 20;
+    localparam I2C_CLOCK        = 500;
 
     //================================================================
     // Clock Generation
@@ -51,15 +52,15 @@ module master_tb;
         clk = 1'b0;
         rst = 1'b0;
 
-        repeat (500) @ (negedge clk);
+        repeat (I2C_CLOCK) @ (negedge clk);
         
         rst = 1'b1;
         dataValid = 1'b1;
         rw = 1'b0;
-        addr = 8'b01010101;
-        din = 7'b0001111;
+        addr = 7'b1010101;
+        din = 8'b00101111;
         
-        repeat (2500) @ (negedge clk); // Equivalent to 5 full i2c clock cycles.
+        repeat (15 * I2C_CLOCK) @ (negedge clk); 
 
         $finish;  
     end    
