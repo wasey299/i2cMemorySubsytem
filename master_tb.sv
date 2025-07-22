@@ -34,6 +34,8 @@ module master_tb;
     //================================================================
     master dut (.*);
 
+    logic sda_tmp;
+   // assign sda = sda_tmp;
     //================================================================
     // Testbench Parameters
     //================================================================
@@ -59,8 +61,20 @@ module master_tb;
         rw = 1'b0;
         addr = 7'b1010101;
         din = 8'b00101111;
-        
-        repeat (22 * I2C_CLOCK) @ (negedge clk); 
+        // START: 1
+        // ADDR + RW: 8
+        // SLAVE_ACK : 1
+        repeat (10 * I2C_CLOCK) @ (negedge clk); // To reach till Data is required for SDA that will be fed to master
+        sda_tmp = 1'b0; repeat (I2C_CLOCK) @ (negedge clk);
+        sda_tmp = 1'b1; repeat (I2C_CLOCK) @ (negedge clk);
+        sda_tmp = 1'b0; repeat (I2C_CLOCK) @ (negedge clk);
+        sda_tmp = 1'b1; repeat (I2C_CLOCK) @ (negedge clk);
+        sda_tmp = 1'b0; repeat (I2C_CLOCK) @ (negedge clk);
+        sda_tmp = 1'b0; repeat (I2C_CLOCK) @ (negedge clk);
+        sda_tmp = 1'b1; repeat (I2C_CLOCK) @ (negedge clk);
+        sda_tmp = 1'b1; repeat (I2C_CLOCK) @ (negedge clk); 
+    //    repeat (8 * I2C_CLOCK) @ (negedge clk);
+        repeat (3 * I2C_CLOCK) @ (negedge clk); 
 
         $stop();  
     end    

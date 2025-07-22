@@ -13,15 +13,15 @@
 # // and may not be used in any way not expressly authorized by SISW.
 # //
 # vsim master_tb 
-# Start time: 23:31:01 on Jul 20,2025
+# Start time: 21:39:56 on Jul 21,2025
 # ** Note: (vsim-3813) Design is being optimized due to module recompilation...
 # Loading sv_std.std
 # Loading work.master_tb(fast)
-vsim -voptargs="+acc" work.master_tb
-# End time: 23:32:30 on Jul 20,2025, Elapsed time: 0:01:29
+do run.do
+# End time: 21:41:22 on Jul 21,2025, Elapsed time: 0:01:26
 # Errors: 0, Warnings: 0
 # vsim -voptargs=""+acc"" work.master_tb 
-# Start time: 23:32:30 on Jul 20,2025
+# Start time: 21:41:22 on Jul 21,2025
 # ** Note: (vsim-3813) Design is being optimized due to module recompilation...
 # ** Warning: (vopt-10587) Some optimizations are turned off because the +acc switch is in effect. This will cause your simulation to run slowly. Please use -access/-debug to maintain needed visibility. The +acc switch would be deprecated in a future release.
 # ** Note: (vopt-143) Recognized 1 FSM in module "master(fast)".
@@ -29,13 +29,8 @@ vsim -voptargs="+acc" work.master_tb
 # Loading sv_std.std
 # Loading work.master_tb(fast)
 # Loading work.master(fast)
-add wave -position insertpoint\
-sim:/master_tb/dut/*
-run all
-# Invalid time value: all
-run -all
-# ** Note: $stop    : master_tb.sv(65)
-#    Time: 230 us  Iteration: 1  Instance: /master_tb
-# Break in Module master_tb at master_tb.sv line 65
-# End time: 23:36:19 on Jul 20,2025, Elapsed time: 0:03:49
+# ** Note: $stop    : master_tb.sv(79)
+#    Time: 220 us  Iteration: 1  Instance: /master_tb
+# Break in Module master_tb at master_tb.sv line 79
+# End time: 21:45:11 on Jul 21,2025, Elapsed time: 0:03:49
 # Errors: 0, Warnings: 1

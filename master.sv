@@ -62,11 +62,14 @@ module master
     state_t state, next_state;
 
     // --- Internal Registers ---
-    logic [7:0] addr_reg;   //Register to store {addr, rw}
-    logic [7:0] data_reg;   //Register to store din  
-    logic       sda_tmp;    //Temporary holding regs for sda and scl
-    logic       scl_tmp;
-    
+    logic [7:0]     addr_reg;   //Register to store {addr, rw}
+    logic [7:0]     data_reg;   //Register to store din  
+    logic            sda_tmp;   //Temporary holding regs for sda and scl
+    logic           scl_tmp;
+    logic [7:0]     read_reg;   //Register to receive incoming data from SDA line form the slave 
+  
+    assign dout =   read_reg;
+
     // --- Tri-State Buffers for connection to sda and scl lines ---
     logic sda_en;
     logic scl_en;
@@ -153,8 +156,8 @@ module master
                         endcase
 
                         if (countFull == clockFull - 1) begin
-                            next_state = SEND_ADDR;
                             scl_tmp = 1'b0;
+                            next_state = SEND_ADDR;
                         end 
                     end
 
@@ -179,13 +182,13 @@ module master
                             if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
                         
                         end else begin
+                             countBit   = '0;
                              next_state = SLAVE_ACK_ADDR;
-                             countBit   = 1'b0;
-                             sda_en     = 1'b0;     // Passing control of sda line to the slave to receive ack bit
                          end
                      end
                     
                      SLAVE_ACK_ADDR: begin
+                            sda_en = 1'b0;
                             unique case (countPulse)
                                         2'b00: begin
                                                 sda_tmp = 1'b0;
@@ -209,6 +212,7 @@ module master
                      end
 
                      WRITE: begin
+                        sda_en = 1'b1;
                         if (countBit <= 7) begin
                             unique case (countPulse)
                                         2'b00: begin
@@ -229,13 +233,13 @@ module master
                             if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
                         
                         end else begin
+                             countBit   = '0;
                              next_state = SLAVE_ACK_DATA;
-                             countBit   = 1'b0;
-                             sda_en     = 1'b0;     // Passing control of sda line to the slave to receive ack bit
                          end
                     end
 
                     SLAVE_ACK_DATA: begin
+                            sda_en = 1'b0;
                             unique case (countPulse)
                                         2'b00: begin
                                                 sda_tmp = 1'b0;
@@ -256,9 +260,65 @@ module master
                             endcase
 
                             if (countFull == clockFull - 1)  begin
-                                next_state = STOP;
                                 ackErr = (!ackSlave) ? 1'b0 : 1'b1;
+                                next_state = STOP;
                             end 
+                    end
+
+                    READ: begin
+                        sda_en = 1'b0;
+                        if (countBit <= 7) begin
+                            unique case (countPulse)
+                                        2'b00: begin
+                                                sda_tmp = 1'b0;
+                                                scl_tmp = 1'b0;
+                                        end
+
+                                        2'b01: begin
+                                                if (countFull == clockQuart * 2) read_reg = {read_reg[6:0] , sda}; // Shifts incoming data form sda
+                                                scl_tmp = 1'b0;
+                                        end
+
+                                        2'b10:  scl_tmp = 1'b1;
+
+                                        2'b11:  scl_tmp = 1'b1;
+
+                            endcase
+                            if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
+                        
+                        end else begin
+                             countBit   = '0;
+                             next_state = MASTER_ACK;
+                         end
+                    end
+                    
+                    // --- Negative acknowledgment to slave to initiate the stop condition ---
+                    MASTER_ACK: begin
+                        sda_en = 1'b1;
+
+                        unique case (countPulse)
+                                        2'b00: begin
+                                             sda_tmp = 1'b1;
+                                             scl_tmp = 1'b0;
+                                        end
+
+                                        2'b01: begin
+                                             sda_tmp = 1'b1;
+                                             scl_tmp = 1'b0;
+                                        end
+
+                                        2'b10: begin
+                                             sda_tmp = 1'b1;
+                                             scl_tmp = 1'b1;
+                                        end
+
+                                        2'b11: begin
+                                             sda_tmp = 1'b1;
+                                             scl_tmp = 1'b1;
+                                        end
+                        endcase
+
+                        if (countFull == clockFull - 1)  next_state = STOP;
                     end
 
                     STOP: begin
