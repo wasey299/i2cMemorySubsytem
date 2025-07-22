@@ -75,7 +75,7 @@ module master
     logic scl_en;
 
     assign sda = (sda_en) ? (!sda_tmp) ? 1'b0 : 1'b1 : 1'bz;
-    assign scl = scl_tmp;
+    assign scl = (scl_en) ? (!scl_tmp) ? 1'b0 : 1'b1 : 1'bz;
 
     // --- Acknowledgement registers ---
     logic ackSlave;
@@ -89,7 +89,7 @@ module master
             countPulse <= '0;
         end
 
-        else begin
+        else if (scl_en) begin
             if ((countFull  == clockQuart - 1) || (countFull  == clockQuart*2 - 1 )|| (countFull  == clockQuart*3 - 1))  begin
                 countFull <= countFull + 1;                   
                 countPulse <= countPulse + 1;            
@@ -103,6 +103,17 @@ module master
     end
      
     //================================================================
+    // SCL Genrator
+    //================================================================
+    always_comb
+    unique case (countPulse)
+        2'b00: scl_tmp = (state == START || state == STOP) ? 1'b1 : 1'b0;
+        2'b01: scl_tmp = (state == START || state == STOP) ? 1'b1 : 1'b0;  
+        2'b10: scl_tmp = (state == START || state == STOP) ? 1'b1 : 1'b1;  
+        2'b11: scl_tmp = (state == START || state == STOP) ? 1'b1 : 1'b1;  
+    endcase
+
+    //================================================================
     // Main Finite State Machines
     //================================================================
     always_ff @(posedge clk or negedge rst)
@@ -114,7 +125,6 @@ module master
                     IDLE: begin
                         done        = 1'b0;
                         ackErr      = 1'b0;
-                        scl_tmp     = 1'b0;
                         sda_tmp     = 1'b0;
                         countBit    = 1'b0;
                         if (dataValid) begin
@@ -132,31 +142,16 @@ module master
                     
                     START: begin
                         sda_en = 1'b1;
+                        scl_en = 1'b1;
                         // ---The start condition:---
                         unique case (countPulse)
-                                        2'b00: begin
-                                             sda_tmp = 1'b1;
-                                             scl_tmp = 1'b1;
-                                        end
-
-                                        2'b01: begin
-                                             sda_tmp = 1'b1;
-                                             scl_tmp = 1'b1;
-                                        end
-
-                                        2'b10: begin
-                                             sda_tmp = 1'b0;
-                                             scl_tmp = 1'b1;
-                                        end
-
-                                        2'b11: begin
-                                             sda_tmp = 1'b0;
-                                             scl_tmp = 1'b1;
-                                        end
+                                        2'b00: sda_tmp = 1'b1;
+                                        2'b01: sda_tmp = 1'b1;
+                                        2'b10: sda_tmp = 1'b0;
+                                        2'b11: sda_tmp = 1'b0;
                         endcase
 
                         if (countFull == clockFull - 1) begin
-                            scl_tmp = 1'b0;
                             next_state = SEND_ADDR;
                         end 
                     end
@@ -164,19 +159,10 @@ module master
                     SEND_ADDR: begin
                         if (countBit <= 7) begin
                             unique case (countPulse)
-                                        2'b00: begin
-                                                sda_tmp = 1'b0;
-                                                scl_tmp = 1'b0;
-                                        end
-
-                                        2'b01: begin
-                                                sda_tmp = addr_reg[7 - countBit]; // Helps in transferring from MSB to LSB
-                                                scl_tmp = 1'b0;
-                                        end
-
-                                        2'b10:  scl_tmp = 1'b1;
-
-                                        2'b11:  scl_tmp = 1'b1;
+                                        2'b00: sda_tmp = 1'b0;
+                                        2'b01: sda_tmp = addr_reg[7 - countBit]; // Helps in transferring from MSB to LSB
+                                        2'b10: begin end
+                                        2'b11: begin end
                             endcase
 
                             if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
@@ -190,22 +176,10 @@ module master
                      SLAVE_ACK_ADDR: begin
                             sda_en = 1'b0;
                             unique case (countPulse)
-                                        2'b00: begin
-                                                sda_tmp = 1'b0;
-                                                scl_tmp = 1'b0;
-                                        end
-
-                                        2'b01: begin
-                                                sda_tmp = 1'b0;
-                                                scl_tmp = 1'b0;
-                                        end
-
-                                        2'b10: begin
-                                            scl_tmp     = 1'b1;
-                                            ackSlave    = 1'b0;  // Will be assigned to sda after slave is implemented
-                                        end
-
-                                        2'b11:  scl_tmp = 1'b1;
+                                        2'b00: begin end
+                                        2'b01: begin end
+                                        2'b10: ackSlave = 1'b0;  // Will be assigned to sda after slave is implemented
+                                        2'b11: begin end
                             endcase
 
                             if (countFull == clockFull - 1)  next_state = (!ackSlave) ? (addr_reg[0]) ? READ : WRITE : STOP; 
@@ -215,19 +189,10 @@ module master
                         sda_en = 1'b1;
                         if (countBit <= 7) begin
                             unique case (countPulse)
-                                        2'b00: begin
-                                                sda_tmp = 1'b0;
-                                                scl_tmp = 1'b0;
-                                        end
-
-                                        2'b01: begin
-                                                sda_tmp = data_reg[7 - countBit]; // Helps in transferring from MSB to LSB
-                                                scl_tmp = 1'b0;
-                                        end
-
-                                        2'b10:  scl_tmp = 1'b1;
-
-                                        2'b11:  scl_tmp = 1'b1;
+                                        2'b00: sda_tmp = 1'b0;
+                                        2'b01: sda_tmp = data_reg[7 - countBit]; // Helps in transferring from MSB to LSB
+                                        2'b10: begin end
+                                        2'b11: begin end
 
                             endcase
                             if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
@@ -241,22 +206,10 @@ module master
                     SLAVE_ACK_DATA: begin
                             sda_en = 1'b0;
                             unique case (countPulse)
-                                        2'b00: begin
-                                                sda_tmp = 1'b0;
-                                                scl_tmp = 1'b0;
-                                        end
-
-                                        2'b01: begin
-                                                sda_tmp = 1'b0;
-                                                scl_tmp = 1'b0;
-                                        end
-
-                                        2'b10: begin
-                                            scl_tmp     = 1'b1;
-                                            ackSlave    = 1'b0;  // Will be assigned to sda after slave is implemented
-                                        end
-
-                                        2'b11:  scl_tmp = 1'b1;
+                                        2'b00: begin end
+                                        2'b01: begin end
+                                        2'b10: ackSlave    = 1'b0;  // Will be assigned to sda after slave is implemented
+                                        2'b11: begin end
                             endcase
 
                             if (countFull == clockFull - 1)  begin
@@ -269,21 +222,12 @@ module master
                         sda_en = 1'b0;
                         if (countBit <= 7) begin
                             unique case (countPulse)
-                                        2'b00: begin
-                                                sda_tmp = 1'b0;
-                                                scl_tmp = 1'b0;
-                                        end
-
-                                        2'b01: begin
-                                                if (countFull == clockQuart * 2) read_reg = {read_reg[6:0] , sda}; // Shifts incoming data form sda
-                                                scl_tmp = 1'b0;
-                                        end
-
-                                        2'b10:  scl_tmp = 1'b1;
-
-                                        2'b11:  scl_tmp = 1'b1;
-
+                                        2'b00: sda_tmp = 1'b0;
+                                        2'b01: if (countFull == clockQuart * 2) read_reg = {read_reg[6:0] , sda}; // Shifts incoming data form sda
+                                        2'b10: begin end 
+                                        2'b11: begin end 
                             endcase
+
                             if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
                         
                         end else begin
@@ -297,25 +241,10 @@ module master
                         sda_en = 1'b1;
 
                         unique case (countPulse)
-                                        2'b00: begin
-                                             sda_tmp = 1'b1;
-                                             scl_tmp = 1'b0;
-                                        end
-
-                                        2'b01: begin
-                                             sda_tmp = 1'b1;
-                                             scl_tmp = 1'b0;
-                                        end
-
-                                        2'b10: begin
-                                             sda_tmp = 1'b1;
-                                             scl_tmp = 1'b1;
-                                        end
-
-                                        2'b11: begin
-                                             sda_tmp = 1'b1;
-                                             scl_tmp = 1'b1;
-                                        end
+                                        2'b00: sda_tmp = 1'b1;
+                                        2'b01: sda_tmp = 1'b1;
+                                        2'b10: sda_tmp = 1'b1;
+                                        2'b11: sda_tmp = 1'b1;
                         endcase
 
                         if (countFull == clockFull - 1)  next_state = STOP;
@@ -325,25 +254,10 @@ module master
                         sda_en = 1'b1;
                         // ---The stop condition:---
                         unique case (countPulse)
-                                        2'b00: begin
-                                             sda_tmp = 1'b0;
-                                             scl_tmp = 1'b1;
-                                        end
-
-                                        2'b01: begin
-                                             sda_tmp = 1'b0;
-                                             scl_tmp = 1'b1;
-                                        end
-
-                                        2'b10: begin
-                                             sda_tmp = 1'b1;
-                                             scl_tmp = 1'b1;
-                                        end
-
-                                        2'b11: begin
-                                             sda_tmp = 1'b1;
-                                             scl_tmp = 1'b1;
-                                        end
+                                        2'b00: sda_tmp = 1'b0;
+                                        2'b01: sda_tmp = 1'b0;
+                                        2'b10: sda_tmp = 1'b1;
+                                        2'b11: sda_tmp = 1'b1;
                         endcase
 
                         if (countFull == clockFull - 1) begin
