@@ -12,25 +12,4 @@
 # // of the Customer's facilities without the express written permission of SISW,
 # // and may not be used in any way not expressly authorized by SISW.
 # //
-# vsim master_tb 
-# Start time: 22:59:28 on Jul 21,2025
-# ** Note: (vsim-8009) Loading existing optimized design _opt
-# Loading sv_std.std
-# Loading work.master_tb(fast)
-do run.do
-# End time: 23:00:24 on Jul 21,2025, Elapsed time: 0:00:56
-# Errors: 0, Warnings: 0
-# vsim -voptargs=""+acc"" work.master_tb 
-# Start time: 23:00:24 on Jul 21,2025
-# ** Note: (vsim-3813) Design is being optimized due to module recompilation...
-# ** Warning: (vopt-10587) Some optimizations are turned off because the +acc switch is in effect. This will cause your simulation to run slowly. Please use -access/-debug to maintain needed visibility. The +acc switch would be deprecated in a future release.
-# ** Note: (vopt-143) Recognized 1 FSM in module "master(fast)".
-# ** Note: (vsim-12126) Error and warning message counts have been restored: Errors=0, Warnings=1.
-# Loading sv_std.std
-# Loading work.master_tb(fast)
-# Loading work.master(fast)
-# ** Note: $stop    : master_tb.sv(79)
-#    Time: 220 us  Iteration: 1  Instance: /master_tb
-# Break in Module master_tb at master_tb.sv line 79
-# End time: 23:05:20 on Jul 21,2025, Elapsed time: 0:04:56
-# Errors: 0, Warnings: 1
+# OpenFile master_tb.sv

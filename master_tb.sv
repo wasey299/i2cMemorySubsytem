@@ -59,7 +59,7 @@ module master_tb;
         rst = 1'b1;
         dataValid = 1'b1;
         rw = 1'b0;
-        addr = 7'b1010101;
+        addr = 7'b1010101; //1010101_0
         din = 8'b00101111;
         // START: 1
         // ADDR + RW: 8
@@ -72,7 +72,7 @@ module master_tb;
         sda_tmp = 1'b0; repeat (I2C_CLOCK) @ (negedge clk);
         sda_tmp = 1'b0; repeat (I2C_CLOCK) @ (negedge clk);
         sda_tmp = 1'b1; repeat (I2C_CLOCK) @ (negedge clk);
-        sda_tmp = 1'b1; repeat (I2C_CLOCK) @ (negedge clk); 
+        sda_tmp = 1'b1; dataValid = 1'b0; repeat (I2C_CLOCK) @ (negedge clk); 
     //    repeat (8 * I2C_CLOCK) @ (negedge clk);
         repeat (3 * I2C_CLOCK) @ (negedge clk); 
 

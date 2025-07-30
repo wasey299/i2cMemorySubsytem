@@ -46,36 +46,36 @@ module master
     
     // --- Counters ---
     logic [3:0]     countBit;   // Helps is transferring the data on SDA bit by bit from MSB to LSB
+    logic [3:0]     next_countBit;
 
     // --- FSM States Enum Logic ---
     typedef enum logic [3:0] {
         IDLE,
         START,
-        SEND_ADDR,
-        SLAVE_ACK_ADDR,
-        WRITE,
-        READ,
-        STOP,
-        SLAVE_ACK_DATA,
-        MASTER_ACK
+        SEND_BYTE,
+        WAIT_ACK,
+        WAIT_CMD,
+        READ_BYTE,
+        SEND_NACK,
+        STOP
     } state_t;
     state_t state, next_state;
 
     // --- Internal Registers ---
-    logic [7:0]     addr_reg;   //Register to store {addr, rw}
-    logic [7:0]     data_reg;   //Register to store din  
-    logic            sda_tmp;   //Temporary holding regs for sda and scl
+    logic [7:0]     data_shift_reg, next_data_reg; 
+    logic           sda_tmp;            // Temporary holding regs for sda and scl
     logic           scl_tmp;
-    logic [7:0]     read_reg;   //Register to receive incoming data from SDA line form the slave 
+    logic [7:0]     read_reg;           // Register to receive incoming data from SDA line form the slave 
+    logic           start_transaction;
+    logic           latched_rw_reg;     // LTakes the snapshot of the rw port for the entire operation
+    logic           done_reg;
+    logic           nack_received;
+    logic           sample_data;
   
-    assign dout =   read_reg;
-
     // --- Tri-State Buffers for connection to sda and scl lines ---
     logic sda_en;
     logic scl_en;
 
-    assign sda = (sda_en) ? (!sda_tmp) ? 1'b0 : 1'b1 : 1'bz;
-    assign scl = (scl_en) ? (!scl_tmp) ? 1'b0 : 1'b1 : 1'bz;
 
     // --- Acknowledgement registers ---
     logic ackSlave;
@@ -117,141 +117,112 @@ module master
     // Main Finite State Machines
     //================================================================
     always_ff @(posedge clk or negedge rst)
-    if (!rst) state <= IDLE;
-    else state <= next_state; 
+    if (!rst) begin 
+        state          <= IDLE;
+        countBit       <= '0;
+        done           <= 1'b0;
+        ackErr         <= 1'b0;
+        latched_rw_reg <= 1'b0;
+    end
+    else begin
+        state    <= next_state; 
+        countBit <= next_countBit;
+        if (start_transaction) begin
+            data_shift_reg  <= {addr, rw};
+            latched_rw_reg  <= rw;
+        end else data_shift_reg <= next_data_reg;
+
+        if (sample_data) read_reg[countBit] <= sda;
+        done    <= done_reg;
+        ackErr  <= nack_received;
+    end
 
     always_comb begin
+        next_state          = state;
+        sda_tmp             = 1'b1;
+        next_countBit       = countBit;
+        next_data_reg       = data_shift_reg;
+        sda_en              = 1'b0;
+        start_transaction   = 1'b0;
+        sample_data         = 1'b0;
+        done_reg            = 1'b0;
+        nack_received       = 1'b0;
+
         unique case (state)
-                    IDLE: begin
-                        done        = 1'b0;
-                        ackErr      = 1'b0;
-                        sda_tmp     = 1'b0;
-                        countBit    = 1'b0;
+                    
+                    IDLE: 
                         if (dataValid) begin
-                           addr_reg     = {addr, rw};
-                           data_reg     = din; 
-                           busy         = 1'b1;
-                           next_state   = START;                           
-                       end else begin
-                           busy         = 1'b0;
-                           next_state   = IDLE;
-                           addr_reg     = '0;
-                           data_reg     = '0;
-                       end
-                    end
+                           start_transaction    = 1'b1;
+                           next_state           = START;                           
+                           next_countBit        = 7;
+                       end 
                     
                     START: begin
                         sda_en = 1'b1;
                         scl_en = 1'b1;
                         // ---The start condition:---
-                        unique case (countPulse)
-                                        2'b00: sda_tmp = 1'b1;
-                                        2'b01: sda_tmp = 1'b1;
-                                        2'b10: sda_tmp = 1'b0;
-                                        2'b11: sda_tmp = 1'b0;
-                        endcase
+                        if (countPulse < 2) sda_tmp = 1'b1;
+                        else sda_tmp = 1'b0;
 
                         if (countFull == clockFull - 1) begin
-                            next_state = SEND_ADDR;
+                            next_state = SEND_BYTE;
                         end 
-                    end
-
-                    SEND_ADDR: begin
-                        if (countBit <= 7) begin
-                            unique case (countPulse)
-                                        2'b00: sda_tmp = 1'b0;
-                                        2'b01: sda_tmp = addr_reg[7 - countBit]; // Helps in transferring from MSB to LSB
-                                        2'b10: begin end
-                                        2'b11: begin end
-                            endcase
-
-                            if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
-                        
-                        end else begin
-                             countBit   = '0;
-                             next_state = SLAVE_ACK_ADDR;
-                         end
-                     end
-                    
-                     SLAVE_ACK_ADDR: begin
-                            sda_en = 1'b0;
-                            unique case (countPulse)
-                                        2'b00: begin end
-                                        2'b01: begin end
-                                        2'b10: ackSlave = 1'b0;  // Will be assigned to sda after slave is implemented
-                                        2'b11: begin end
-                            endcase
-
-                            if (countFull == clockFull - 1)  next_state = (!ackSlave) ? (addr_reg[0]) ? READ : WRITE : STOP; 
                      end
 
-                     WRITE: begin
-                        sda_en = 1'b1;
-                        if (countBit <= 7) begin
-                            unique case (countPulse)
-                                        2'b00: sda_tmp = 1'b0;
-                                        2'b01: sda_tmp = data_reg[7 - countBit]; // Helps in transferring from MSB to LSB
-                                        2'b10: begin end
-                                        2'b11: begin end
+                     SEND_BYTE: begin
+                        sda_en  = 1'b1;
+                        scl_en  = 1'b1;
+                        sda_tmp = data_shift_reg[countBit];
+                        if (countFull == clockFull - 1) begin
+                            if (countBit == 0) next_state = WAIT_ACK;
+                            else next_countBit = countBit - 1;
+                        end
+                     end
 
-                            endcase
-                            if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
-                        
-                        end else begin
-                             countBit   = '0;
-                             next_state = SLAVE_ACK_DATA;
-                         end
-                    end
-
-                    SLAVE_ACK_DATA: begin
-                            sda_en = 1'b0;
-                            unique case (countPulse)
-                                        2'b00: begin end
-                                        2'b01: begin end
-                                        2'b10: ackSlave    = 1'b0;  // Will be assigned to sda after slave is implemented
-                                        2'b11: begin end
-                            endcase
-
-                            if (countFull == clockFull - 1)  begin
-                                ackErr = (!ackSlave) ? 1'b0 : 1'b1;
-                                next_state = STOP;
+                     WAIT_ACK: begin
+                         sda_en = 1'b0; // Release the SDA for the slave
+                         if (countPulse == 2) ackSlave = 1'b0;//sda;
+                         if (countFull == clockFull -1) begin
+                             if (ackSlave == 1'b1) begin
+                                nack_received   = 1'b1;
+                                next_state      = STOP;
                             end 
-                    end
+                            else begin
+                                if (latched_rw_reg) begin
+                                    next_state      = READ_BYTE;
+                                    next_countBit   = 7; 
+                                end else next_state = WAIT_CMD;
+                            end
+                           end
+                     end
 
-                    READ: begin
+                     WAIT_CMD: begin
+                         if (dataValid) begin
+                             next_state     = SEND_BYTE;
+                             next_countBit   = 7;
+                             next_data_reg  = din;
+                         end else next_state = STOP;
+                     end
+
+                    READ_BYTE: begin
                         sda_en = 1'b0;
-                        if (countBit <= 7) begin
-                            unique case (countPulse)
-                                        2'b00: sda_tmp = 1'b0;
-                                        2'b01: if (countFull == clockQuart * 2) read_reg = {read_reg[6:0] , sda}; // Shifts incoming data form sda
-                                        2'b10: begin end 
-                                        2'b11: begin end 
-                            endcase
-
-                            if (countFull == clockFull - 1) countBit++; // Moves to next to next clock cylce for next bit
-                        
-                        end else begin
-                             countBit   = '0;
-                             next_state = MASTER_ACK;
-                         end
+                        if (countPulse == 2) sample_data = 1'b1;
+                        if (countFull == clockFull - 1) begin
+                            if (countBit == 0) next_state = SEND_NACK;
+                            else next_countBit = countBit - 1;
+                        end
                     end
                     
                     // --- Negative acknowledgment to slave to initiate the stop condition ---
-                    MASTER_ACK: begin
+                    SEND_NACK: begin
                         sda_en = 1'b1;
-
-                        unique case (countPulse)
-                                        2'b00: sda_tmp = 1'b1;
-                                        2'b01: sda_tmp = 1'b1;
-                                        2'b10: sda_tmp = 1'b1;
-                                        2'b11: sda_tmp = 1'b1;
-                        endcase
-
-                        if (countFull == clockFull - 1)  next_state = STOP;
+                        sda_tmp = 1'b1;
+                        if (countFull == clockFull - 1) next_state = STOP;
                     end
 
                     STOP: begin
-                        sda_en = 1'b1;
+                        sda_en   = 1'b1;
+                        done_reg = 1'b1;
                         // ---The stop condition:---
                         unique case (countPulse)
                                         2'b00: sda_tmp = 1'b0;
@@ -267,31 +238,14 @@ module master
            endcase
     end
 
+ //================================================================
+ // Final Output Logic
+ //================================================================
+    assign sda  = (sda_en) ? sda_tmp : 1'bz;
+    assign scl  = (scl_en) ? scl_tmp : 1'bz;
+
+    assign busy = (state != IDLE);
+    assign dout = read_reg;
+
+
 endmodule
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
