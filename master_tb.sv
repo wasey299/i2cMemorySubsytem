@@ -28,6 +28,8 @@ module master_tb;
     // I2C Bus Interface
     tri           sda;
     tri           scl;
+
+    tri           scl_t;
     
     //================================================================
     // DUT Instantiation
@@ -35,7 +37,11 @@ module master_tb;
     master dut (.*);
 
     logic sda_tmp;
-   // assign sda = sda_tmp;
+
+    // This ensures the pull up resistor behaviour. So, whenever the dut.scn_en is low, it gets disconnected and drives Z,
+    // but it is then, replaced by the weak high of the following statement.
+    assign (pull1, pull0) scl = 1'b1; // The first arg 'pull1 or weak 1' will be performed when scl = 1, and the scl will only be one here
+    // if the scl of the dut releases the scl or make scl_en = 0.
     //================================================================
     // Testbench Parameters
     //================================================================

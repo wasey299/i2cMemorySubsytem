@@ -43,7 +43,6 @@ module master
     // --- Timing Generator Signals ---
     int             countFull;  // Counte from 0 to clockQuart - 1
     logic [1:0]     countPulse; // Counts four phases: 0, 1, 2, 3
-    logic           core_en;
     
     // --- Counters ---
     logic [3:0]     countBit;   // Helps is transferring the data on SDA bit by bit from MSB to LSB
@@ -90,7 +89,7 @@ module master
             countPulse <= '0;
         end
 
-        else if (core_en && !(scl_en == 1'b0 && scl == 1'b0)) begin
+        else if (scl_en) begin
             if ((countFull  == clockQuart - 1) || (countFull  == clockQuart*2 - 1 )|| (countFull  == clockQuart*3 - 1))  begin
                 countFull <= countFull + 1;                   
                 countPulse <= countPulse + 1;            
@@ -160,7 +159,7 @@ module master
                     
                     START: begin
                         sda_en = 1'b1;
-                //        scl_en = 1'b1;
+                        scl_en = 1'b1;
                         // ---The start condition:---
                         if (countPulse < 2) sda_tmp = 1'b1;
                         else sda_tmp = 1'b0;
@@ -172,7 +171,7 @@ module master
 
                      SEND_BYTE: begin
                         sda_en  = 1'b1;
-                  //      scl_en  = 1'b1;
+                        scl_en  = 1'b1;
                         sda_tmp = data_shift_reg[countBit];
                         if (countFull == clockFull - 1) begin
                             if (countBit == 0) next_state = WAIT_ACK;
@@ -240,8 +239,8 @@ module master
     assign sda  = (sda_en) ? sda_tmp : 1'bz;
     assign scl  = (scl_en) ? 1'b0 : 1'bz;
 
-    assign busy     = (state != IDLE);
-    assign dout     = read_reg;
-    assign core_en  = (state != IDLE);
+    assign busy = (state != IDLE);
+    assign dout = read_reg;
+
 
 endmodule
