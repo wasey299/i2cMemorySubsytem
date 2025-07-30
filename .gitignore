@@ -14,4 +14,9 @@ csrc
 # Vivado/other tool files
 *.jou
 *.wdb
-.Xil/
+.Xil
+
+work/
+.nfs000000000045b385000009ba
+\/
+
