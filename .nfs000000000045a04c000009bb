@@ -90,9 +90,6 @@ module master
             countPulse <= '0;
         end
 
-        // Only starts counting when the core_en is asserted and there is
-        // clock strecthcing happening, i.e., scl_en is low and also ecl is
-        // being driven by a strong low at the same time.
         else if (core_en && !(scl_en == 1'b0 && scl == 1'b0)) begin
             if ((countFull  == clockQuart - 1) || (countFull  == clockQuart*2 - 1 )|| (countFull  == clockQuart*3 - 1))  begin
                 countFull <= countFull + 1;                   
