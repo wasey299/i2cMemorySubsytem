@@ -146,7 +146,6 @@ module master
         sda_tmp             = 1'b1;
         next_countBit       = countBit;
         next_data_reg       = data_shift_reg;
-        sda_en              = 1'b0;
         start_transaction   = 1'b0;
         sample_data         = 1'b0;
         done_reg            = 1'b0;
@@ -162,8 +161,6 @@ module master
                        end 
                     
                     START: begin
-                        sda_en = 1'b1;
-                //        scl_en = 1'b1;
                         // ---The start condition:---
                         if (countPulse < 2) sda_tmp = 1'b1;
                         else sda_tmp = 1'b0;
@@ -174,8 +171,6 @@ module master
                      end
 
                      SEND_BYTE: begin
-                        sda_en  = 1'b1;
-                  //      scl_en  = 1'b1;
                         sda_tmp = data_shift_reg[countBit];
                         if (countFull == clockFull - 1) begin
                             if (countBit == 0) next_state = WAIT_ACK;
@@ -184,7 +179,6 @@ module master
                      end
 
                      WAIT_ACK: begin
-                         sda_en = 1'b0; // Release the SDA for the slave
                          if (countPulse == 2) ackSlave = 1'b0;//sda;
                          if (countFull == clockFull -1) begin
                              if (ackSlave == 1'b1) begin
@@ -209,7 +203,6 @@ module master
                      end
 
                     READ_BYTE: begin
-                        sda_en = 1'b0;
                         if (countPulse == 2) sample_data = 1'b1;
                         if (countFull == clockFull - 1) begin
                             if (countBit == 0) next_state = SEND_NACK;
@@ -219,13 +212,11 @@ module master
                     
                     // --- Negative acknowledgment to slave to initiate the stop condition ---
                     SEND_NACK: begin
-                        sda_en = 1'b1;
                         sda_tmp = 1'b1;
                         if (countFull == clockFull - 1) next_state = STOP;
                     end
 
                     STOP: begin
-                        sda_en   = 1'b1;
                         done_reg = 1'b1;
 
                         // ---The stop condition:---
@@ -246,5 +237,6 @@ module master
     assign busy     = (state != IDLE);
     assign dout     = read_reg;
     assign core_en  = (state != IDLE);
+    assign sda_en   = (state == START || state == SEND_BYTE || state == SEND_NACK || state == STOP);
 
 endmodule
